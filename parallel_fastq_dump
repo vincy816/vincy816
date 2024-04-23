@@ -1,0 +1,5 @@
+rid=( SRR23930914 SRR23930930 )
+for rid in "${rid[@]}"
+do
+	parallel-fastq-dump --sra-id $rid --threads 4 --outdir out/ --split-files --gzip
+done
