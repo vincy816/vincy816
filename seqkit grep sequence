@@ -1,0 +1,10 @@
+####seqkit提取整条染色体####
+seqkit grep -r -p "chrID" genome.fasta > ChrID.fasta
+
+#####seqkit提取指定位置序列#####bed文件，至少包含三列，染色体id，序列起始位置，序列结束位置####
+seqkit subseq --bed rustica.bed N.rustica.fasta > rustica_extract.fasta
+
+###如果你想根据ID列表提取序列，你应该使用 seqkit grep -f id.txt seqs.fasta。如果你想提取序列的子区域（例如，从每个序列的位置10到20），你应该使用 seqkit subseq，但请注意，这与根据ID提取整个序列是不同的操作。#####
+
+####minimap2 比对序列和参考基因组####reference.fasta query.fasta > out.paf#####
+minimap2 -c sol/S_atropurpureum.fasta rawdata/Nalata15Mbextract.fasta > Na_atro.paf
