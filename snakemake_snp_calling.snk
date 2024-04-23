@@ -1,0 +1,84 @@
+configfile: "/mnt/ext4/home/wenjia/snakemake/call_snp/snp_call_map.yaml"
+WORKING_DIR = config["working_dir"]
+RESULT_DIR = config["result_dir"]
+REF_dir = config["refdir"]
+genome = config["ref"]
+##os.listdir("/data/public/genotype/reseq/cigar_187/fastq") if re.search("_1.fq.gz",f)]
+#SAMPLES = [ f.strip("\n") for f in open("/mnt/wenjia/tabacco94/samplename.txt").readlines() ]
+SAMPLES = ["MQ551"]
+rule all:
+        input:
+                outbam = expand(RESULT_DIR + "mapped/{sample}_sort_index_rg_nodup.bam",sample=SAMPLES),
+                outbai = expand(RESULT_DIR + "mapped/{sample}_sort_index_rg_nodup.bai",sample=SAMPLES)
+
+rule fastp:
+        priority: 1
+        input:
+                fw = WORKING_DIR + "{sample}_clean_1.fq.gz",
+                rev= WORKING_DIR + "{sample}_clean_2.fq.gz"
+        output:
+                fq1  = RESULT_DIR + "trimmed/{sample}_R1_trimmed.fq.gz",
+                fq2  = RESULT_DIR + "trimmed/{sample}_R2_trimmed.fq.gz",
+                html = RESULT_DIR + "fastp/{sample}.html"
+        message:"trimming {wildcards.sample} reads to {output.fq1}"
+        threads: config["threads"]
+        log:
+                WORKING_DIR + "logs/fastp/{sample}.log.txt"
+        params:
+                qualified_quality_phred = config["fastp"]["qualified_quality_phred"]
+        shell:
+                "set +o pipefail; \
+                fastp --thread {threads}  --html {output.html} \
+                --qualified_quality_phred {params.qualified_quality_phred} \
+                --in1 {input.fw} --in2 {input.rev} --out1 {output.fq1} --out2 {output.fq2} \
+                > {log} 2>&1"
+
+rule bwa2:
+        priority: 2
+        input:
+                ref = REF_dir + genome + ".fasta",
+                fq1  = RESULT_DIR + "trimmed/{sample}_R1_trimmed.fq.gz",
+                fq2  = RESULT_DIR + "trimmed/{sample}_R2_trimmed.fq.gz"
+        output:
+                bam = RESULT_DIR + "mapped/{sample}_unsort.bam"
+        params:
+                thr = config["threads"],
+                ref = REF_dir + genome + ".fasta"
+        shell:
+                "bwa-mem2  mem -t {params.thr} {params.ref} {input.fq1} {input.fq2} | samtools view -bS - > {output.bam}"
+
+rule samtools_sort:
+        priority: 3
+        input:
+                input_bam = RESULT_DIR + "mapped/{sample}_unsort.bam"
+        params:
+                threads = config["threads"]
+        output:
+                sort_index_bam = RESULT_DIR + "mapped/{sample}_sort_index.bam"
+        shell:
+                "samtools sort -O BAM -@ {params.threads} {input.input_bam} -o {output.sort_index_bam}"
+
+rule addReadGroup:
+        priority: 4
+        input:
+                picard = config["picard"],
+                sort_index_bam = RESULT_DIR + "mapped/{sample}_sort_index.bam"
+        output:
+                sort_index_rgbam = temp(RESULT_DIR + "mapped/{sample}_sort_index_rg.bam")
+        params:
+                samp = "{sample}"
+        shell:
+                "java -jar {input.picard} AddOrReplaceReadGroups \
+                I={input.sort_index_bam}  O={output.sort_index_rgbam} RGID={params.samp} RGLB=lib1 RGPL=ILLUMINA RGPU=unit1 RGSM={params.samp}"
+
+rule picard_mark_duplicates:
+        priority: 5
+        input:
+                picard = config["picard"],
+                bam = RESULT_DIR + "mapped/{sample}_sort_index_rg.bam"
+        output:
+                outbam = protected(RESULT_DIR + "mapped/{sample}_sort_index_rg_nodup.bam"),
+                metrics = RESULT_DIR + "dupstats/{sample}.picard.marked_dup_metrics.txt",
+                outbai = protected(RESULT_DIR + "mapped/{sample}_sort_index_rg_nodup.bai")
+        shell:
+                "java -Xmx6G -jar {input.picard}  MarkDuplicates I={input.bam} O={output.outbam} M= {output.metrics} REMOVE_DUPLICATES=true CREATE_INDEX=true"
