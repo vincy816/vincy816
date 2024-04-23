@@ -3,3 +3,13 @@ for rid in "${rid[@]}"
 do
 	parallel-fastq-dump --sra-id $rid --threads 4 --outdir out/ --split-files --gzip
 done
+
+####test##### 从txt文件批量下载sra数据
+#获得txt文件   1、ncbi搜索关键词，得到编号，勾选想要的文件，点击send to，选择file和accession list，create file生成txt文件。2、将需要下载文件的编号置于一个文件中，一行一个。
+#设置分隔符为换行符，分隔符默认为空格##设置分隔符为空格，IFS=” “##设置空格符为|,IFS='|'
+IFS=$'\n'	#IFS='\n'和IFS="\n"都表示用 n 做分隔符
+array=($(<file.txt))	###读取文件内容并将其存储在数组中
+for i in "${array[@]}"	#输出数组内容
+do
+	echo "$i"
+done
