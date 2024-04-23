@@ -1,0 +1,16 @@
+working_dir:
+    /mnt/wenjia/tabacco94/resultnew/clr_data/rawdata/
+result_dir:
+    /mnt/wenjia/tabacco94/resultnew/clr_data/
+ref:
+    ZY300.fa
+refdir:
+    /mnt/ext4/home/wenjia/data/zy300/genome/
+fastp:
+    qualified_quality_phred: "15"
+picard:
+    /mnt/ext4/home/wenjia/miniconda3/envs/rna/share/picard-2.18.29-0/picard.jar
+bwamem2:
+    /home/sh/Software/bwa-mem2-2.2.1_x64-linux
+threads:
+    15
